@@ -73,3 +73,5 @@ Spark UI provides the graphical UI for various spark operations, it runs on 4040
 ## First Standalone application
 
 We can write **Python** or **Scala** application using this github dir example `https://github.com/Rohan0401/LearningSparkV2`
+
+-------------------------

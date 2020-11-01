@@ -9,23 +9,23 @@ Speark proivdes following key charateristics
 4. Extensibility 
 
 ### Speed 
-Spark utilizes the hardware and mordern high performace software techniques to improve the speed and memory consumption by using memeory, concurrency, multicore, threading and concurrency to speed up the task.
-Spark builds query computation as Direct Acyclic Graph (DAG); its DAG scheduler and query optimizer construct an efficent computation graph that can useally decompose the tasa that are executed in parelllel across the cluster workers. 
-Last is Tungusten code generator which generate a compact code which can execute the SQL query
+Spark utilizes the hardware and modern high performance software techniques to improve the speed and memory consumption by using memory, concurrency, multi-core, threading and concurrency to speed up the task.
+Spark builds query computation as Direct Acyclic Graph (DAG); its DAG scheduler and query optimizer construct an efficient computation graph that can usually decompose the task that are executed in parallel across the cluster workers. 
+Last is Tungsten code generator which generate a compact code which can execute the SQL query
 ### Ease of the Use 
-Spark provides a fundamental abstraction of a simple logical datastructure called RDD (Resilent Distributed Datset) upn which all other higher-level structure data abstraction as DartaFrames, Datasets are constructed. It provided transformation and actions as operation
+Spark provides a fundamental abstraction of a simple logical data-structure called RDD (Resilient Distributed Dataset) upn which all other higher-level structure data abstraction as DataFrames, Datasets are constructed. It provided transformation and actions as operation
 ### Modularity 
-Spark provides various programming lenguage APIs to support Scala, Java, SQL and Python etc. It also has Spark SQL, Structured Streaming, MLlib, and GraphX. 
+Spark provides various programming language APIs to support Scala, Java, SQL and Python etc. It also has Spark SQL, Structured Streaming, MLlib, and GraphX. 
 ### Extensibility 
-Spark focuses on its fast, parellel computation engine rather than on storage. It can store dasta in Cassandra, HBase, MongoDB, Hive and many more. DataFrameReaders and DataFrameWriters can be extended to read data from other sources like Kafkam Kenisis, Storange, and S3 into its logical data abstraction on which it can operate. 
+Spark focuses on its fast, parallel computation engine rather than on storage. It can store data in Cassandra, HBase, MongoDB, Hive and many more. DataFrameReaders and DataFrameWriters can be extended to read data from other sources like Kafka Kinesic, Storage, and S3 into its logical data abstraction on which it can operate. 
 ## Unified Analytics 
 Spark provides a unified engine for all different types of analytics on a same distributed fast engine. 
 
 ## Spark SQL 
-This module works well with the structured data with CSV, JSON, ORC, Parquet and then construct perment and temprory tables in Spark. 
-Spark MLlib : Spark comes with a library contaning common machine learning algorithms which can help to parellelize the operation on spark 
+This module works well with the structured data with CSV, JSON, ORC, Parquet and then construct permanent and temporary tables in Spark. 
+Spark MLlib : Spark comes with a library containing common machine learning algorithms which can help to parallelize the operation on spark 
 ## Spark Structure Streaming
-It help to connect spark API to the various straming services like Apache Kafka
+It help to connect spark API to the various streaming services like Apache Kafka
 ```# In Python
 # Read a stream from a local host
 from pyspark.sql.functions import explode, split
@@ -113,6 +113,27 @@ print(log_df.rdd.getNumPartitions())
 df = spark.range(0, 100000, 1,8)
 print(df.rdd.getNumPartitions())
 ```
+We can also use DataFrameWriter to save the data in Parquet format. The command for the Writer format is 
+```
+// In Scala to save the format we can use 
+val parquetPath = fileDF.write.format("parquet").save(parquetPath)
 
+# In python 
+parquet_path = fire_df.write.format("parquet").save(parquet_path)
+
+
+```
+
+We can also save as a SQL table 
+```
+// In Scala 
+val parquetTable = fireDF.write.format("parquet").saveAsTable(parquetTable)
+
+# In Python
+parquet_table = fire_df.write.format("parquet").saveAsTable(parquet_table)
+
+```
+
+-----------------------
 
 

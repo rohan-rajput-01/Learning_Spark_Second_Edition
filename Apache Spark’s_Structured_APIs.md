@@ -71,3 +71,136 @@ val schema = "author STRING, title STRING, pages INT"
 schema = "author STRING, title STRING, pages INT"
 
 ```
+## Columns and expression 
+DataFrame in Spark are inspired by the Pandas and R DataFrame they are like RDBMS table. We can list all the columns 
+by their name and perform operation using relational or computation expressions. In spark columns are object with public methods (`Column` type) 
+
+We can also apply logical or mathematical operations using `expr("columnName * 5")` where the `expr()` is a part of the `pyspark.sql.function` package. 
+
+```
+// In scala 
+import org.apache.spark.sql.functions._
+blogsDF.columns 
+
+// Access a Particular column with col and it returns a Column type 
+blogsDF.col("Id")
+
+// Use an expression to compute a value 
+blogsDF.select(expr("Hits * 2")).show(2)
+// or 
+blogsDF.select(col("Hits") * 2).show(2)
+// Use an expression to compute bigger hitters for blogs 
+// This adds a new columns, Bigger Hitters, based on conditional //expression 
+blogsDF.withColumn("Big Hitters", (expr("Hits > 10000")))
+// Concatenate three columns, create a new column, and show the
+// newly created concatenated column
+blogsDF
+.withColumn("AuthorsId", (concat(expr("First"), expr("Last"), expr("Id"))))
+.select(col("AuthorsId"))
+.show(4)
+// Sort by column "Id" in descending order
+blogsDF.sort(col("Id").desc).show()
+blogsDF.sort($"Id".desc).show()
+
+```
+
+`Column object` in a DataFrame can't exist in isolation; each column is a part of a row in a record and all the row together constitute a DataFrame, which as we wil see later in the chapter is really a Dataset[Row] in Scala
+
+### Rows 
+A row in Spark is a generic `Row Object`, containing one or more columns. Each colum many be od same data type or the have different data types. Row is an object in Spark and an Ordered collection of the fields, we can instantiate a Row in each of the Spark's supported language and access its fields by an index starting at 0 
+```
+// In scala 
+import org.apache.spark.sql.Row 
+// Create a Row 
+val blogRow = Row(6, "Reynold", "url" , "3/2/2015", Array("twitter", "LinkedIn"))
+// Access the Row 
+blogRow(1)
+
+# In python 
+from pyspark.sql import Row 
+
+blog_row = Row(6, "Reynold", "url", "3/2/2015", ["twitter" , "LinkedIn"])
+blog_row[1]
+```
+
+Row Objects can be used to create the DataFrames in for quick and interactivity and exploration 
+
+```
+# In python 
+rows = [Row("Metal x" , "CA"), Row("Reynold Xin" , "CA")]
+authors_df = spark.createDataframe(rows, ["Authors" , "State"])
+authors_df.show()
+
+
+// In Scala 
+val rows = Seq(("Matei Zahari", "CA") , ("Reynold Xin", "CA"))
+authorDF = rows.toDF("Author" , "State")
+authorDF.show()
+```
+
+### Common DataFrame Operations 
+Spark provides read and write operation for the DataFrame. They are `DataFrameReader` and `DataFrameWriter`. 
+
+### DataFrameReader and DataFrameWriter 
+Reading and Writing are simple in Spark because of these high-level abstractions and contributions to connect various data sources like NoSQL stores, RDBMS, Streaming Engines like Apache Kafka 
+
+### Transformation and Actions 
+
+In this chapter we will see some of the transformations and actions operation on the DataFrame 
+
+#### Projections and Filters 
+`Projection` help us to get only machine rows based on some condition. 
+We have `select()` and `filter()` projection for dataFrame()
+
+```
+# In Python
+few_fire_df = (fire_df
+.select("IncidentNumber", "AvailableDtTm", "CallType")
+.where(col("CallType") != "Medical Incident"))
+few_fire_df.show(5, truncate=False)
+// In Scala
+val fewFireDF = fireDF
+.select("IncidentNumber", "AvailableDtTm", "CallType")
+.where($"CallType" =!= "Medical Incident")
+fewFireDF.show(5, false)
+```
+### Renaming, Adding and Dropping column 
+We can rename the columns where the values are not in correct name format, for such operation we have `withColumnRename()` 
+```
+new_fire_df = fire_df.withColumnRenamed("Delay", "ResponseDelayedinMin")
+new_fire_df
+    .select("ResponsedDelayedinMin")
+    .where(col("ResponseDelayedinMin") > 5)
+    .show(5, False)
+
+// In Scala
+val newFireDF = fireDF.withColumnRenamed("Delay", "ResponseDelayedinMins")
+newFireDF
+.select("ResponseDelayedinMins")
+.where($"ResponseDelayedinMins" > 5)
+.show(5, false)
+```
+We can convert the `string` into `date/time` functions 
+```
+# In python 
+
+
+// In Scala 
+val fireTsDF = newFireDF
+    .withColumn("IncidentDate", to_timestamp(col("CallDate"), "MM/dd/yyyy"))
+    .drop("watchDate")
+    .withColumn("OnWatchDate", to_timestamp(col("WatchDate"), "MM/dd/yyyy"))
+    .withColumns("AvailableDtTS", to_timestamp(col("Available", "MM/dd/yyyy"))
+    .drop("AvailableDtTm"))
+
+// Select DataFrame with Converted columns 
+fireTsDF
+.select("IncidentDate", "OnWatchDate", "AvailableDtTs")
+.show(5, false)
+```
+Similarly we can do for the `year(), month(), day()`
+
+```
+# In Python 
+
+```
