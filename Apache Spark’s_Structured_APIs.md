@@ -202,5 +202,196 @@ Similarly we can do for the `year(), month(), day()`
 
 ```
 # In Python 
+(fire_ts_df
+    .select(year("IncidentDate"))
+    .distinct()
+    .orderBy(year("IncidentDate"))
+    .show()
+)
+
+// In scala 
+fileTsDF
+    .select(year($"IncidentDate"))
+    .distinct()
+    .orderBy(year($"IncidentDate"))
+    .show()
+```
+
+#### Aggregations 
+ Aggregations can help to combine the data with column names band then aggregates count across them. 
 
 ```
+# In Python
+fire_ts_df
+    .select("CallType")
+    .where(col("CallType).isNotNull())
+    .groupBy("CallType")
+    .count()
+    .orderBy("count", ascending=False)
+    .show(10, truncate=False)
+
+// In Scala
+fireTsDF
+    .select("CallType")
+    .where(col("CallType").isNotNull)
+    .groupBy("CallType")
+    .count()
+    .orderBy(desc("count"))
+    .show(10, false)
+
+```
+For small number of DataPoint peek we should always use `take()` rather 
+than `collect()` as it might explode the memory with large data size 
+
+# Other aggregation 
+We also have various other aggregation operations like `max(), min() min()`. We also have various statistical operation like `stat(),describe(), correlation(), covariance(), sampleBy(), approxQuantile(), frequentItems()`
+
+## End to End DataFrame example 
+
+• What were all the different types of fire calls in 2018?
+• What months within the year 2018 saw the highest number of fire calls?
+• Which neighborhood in San Francisco generated the most fire calls in 2018?
+• Which neighborhoods had the worst response times to fire calls in 2018?
+• Which week in the year in 2018 had the most fire calls?
+• Is there a correlation between neighborhood, zip code, and number of fire calls?
+• How can we use Parquet files or SQL tables to store this data and read it back?
+
+## DataSet API 
+DataSet is a Strongly typed collection of domain-specific objects that can be transformed in parallel using function or relational operations. Each DataSet [in scala] also has an untyped view called a DataFrame, which is a Dataset of Row 
+
+### Typed Object, Untyped Object and Generic Rows 
+In Spark DataSet make sense only in Java and Scala, whereas in Python and R DataFrame make sense. This is because in Python and R are not compile-time type safe; types are dynamically refereed or assigned during execution, not during compile time. The reverse is true in Scala and Java: types are bound to variable and object to compile time. In Scala DataFrame is just an alias for untyped Dataset[Row]
+Row is a generic object type in Spark, holding a collection of mixed types that can be accessed using an index. 
+```
+// In Sala 
+import org.apache.spark.sql.Row 
+val row = Row(350, true, "Learning Spark 2E", null)
+
+# In python 
+from pyspark.sql import Row 
+row = Row(350, True, "Learning Spark", None)
+
+// Index 
+row.getInt(0)
+row.getBoolean(0)
+row.getString(0)
+
+# In python
+row[0]
+row[1]
+row[2]
+```
+### Creating Dataset 
+For Dataset it very important to know the schema and data types. We can specify the schema in Scala for specify the schema for resulting Dataset is to use a case class. 
+
+### Scala : Case Class
+When we wish to instantiate the domain-specific object as Dataset, we can do so by defining the case class in Scala. We can read the JSON file from the IoT device. 
+
+```
+Example JSON file 
+{"device_id": 198164, "device_name": "sensor-pad-198164owomcJZ", "ip":
+"80.55.20.25", "cca2": "PL", "cca3": "POL", "cn": "Poland", "latitude":
+53.080000, "longitude": 18.620000, "scale": "Celsius", "temp": 21,
+"humidity": 65, "battery_level": 8, "c02_level": 1408,"lcd": "red",
+"timestamp" :1458081226051}
+
+// To express each JSON entry as DeviceIoTData, a domain-specific object, we can define a Scala case class 
+
+case class DeviceIoTData( battery_level : Long, c02_level : Long, 
+cca2: String, cca3: String, cn : String, device_id : Long,
+device_name : String, longitude : Double, scale : String, temp : Long,
+timestamp : Long)
+
+// Once we defined, we can read it to our file and convert the returned Dataset[Row]
+into Dataset[DeviceIoTData]
+
+val ds = spark.read
+    .json("filePath")
+    .as[DeviceToTData]
+```
+### Dataset operations 
+Just like the DataFrame we can perform operation on Dataset 
+```
+// In Scala 
+val filterTempDS = ds.filter({d => {d.temp > 30 && d.humidity > 70}})
+
+```
+We can use function as an argument in method filter(). This is an overloaded method with many signatures. The version is `filter(func: (T) > Boolean) : Dataset[T]`, takes a lambda function, func : (T) > Boolean, as its argument.
+
+The argument to the lambda function is a JVM object of the `DeviceIoTData`. So we can access its individual data fields using the dot (.) notation, like would in a Scala class or JavaBean
+
+In Dataset we can use language native expression like Scala or Java code ex `filter(), map(), groupBy(), select(), take()` - are similar to the DataFrame. Dataset are similar to RDDs in that they provide a similar interface to its aforementioned methods and compile-time safety but with a much easier to read and an object-oriented programming interface. 
+
+## DataFrame vs DataSet 
+
+1. If you want to tell Spark what to do, not how to do it, use DataFrames or Datasets. 
+2. If you want rick semantics, high-level abstractions, and DSL operators, use DataFrame or Datasets 
+3. If you want strict compile-time safety and don't mind creating multiple case classes for the specific Dataset[T], use Datasets. 
+4. If your processing demands high-level expressions, filters, maps, aggregations, computing averages or sums, SQL queries, columnar access, or use of relational operators on semi-structured data then use DataFrames or Datasets. 
+5. If your processing dictates relational transformations similar to SQL-like queries, use DataFrames. 
+6. If you want to take advantages of and benefits from Tungsten;s efficient serialization with Encoders, use Datasets. 
+7. If you want unification code optimization, and simplification of APIs across the Spark components, use DataFrames 
+8. If you are a Python user, use DataFrames and drop down to RDDs if you need more control 
+9. If you want space and speed efficiency, use DataFrames. 
+10. If you want errors caught during compilation rather than runtime, choose appropriate API as depicted. 
+![](./images/11.png)
+
+### When to use RDDs
+There are following scenarios where RDDs are required 
+1. If using third-party package that's written in using RDDs. 
+2. Can forgo the code optimization, efficient space utilization and performance benefits available with DataFrame and Datasets 
+3. Want to precisely instruct Spark how to do query
+
+
+## Spark SQL and the Underlying Engineer 
+
+The Spark SQL engine allows us to do following operations 
+- Unifies Spark components and permits abstraction to DataFrame/DataSets in Java, Scala, Python and R which simplifies working with structured data sets. 
+- Connects to Apache Hive metastore tables.
+- Reads asn writes structures data with a specific schema from the structured file formats (JSON, CSV, Text, Avro, Parquets, ORC etc) and convert data into temporary tables.
+- Offers interactive SQL SQL shell for quick data exploration 
+- Provides a bridge to external tools via standard database JDBC/ODBC connectors 
+- Generates optimized query plans and compact code for the JVM for final execution 
+  ![](images/12.png)
+  SQL engine are the Catalyst Optimizer and Project Tungsten. They support DataFrame and Dataset API and SQL queries 
+
+### The Catalyst Optimizer 
+The Catalyst Optimizer takes the computational query and converts into an execution plan. It goes through four transformational phases
+1. Analysis 
+2. Logical optimization 
+3. Physical Planning 
+4. Code Generation 
+![](images/13.png) 
+
+All language go through same execution cycle to execute the program. We can check the execution program cycle. `count_mnm_df.explain(True)` method for the DataFrame or to get a look at different logical and physical plans, in Scala you can call `df.queryExecution.logical` or `queryExecution.optimizedPlan`. 
+```
+// Table one
+val userDF = ...
+// Table two 
+val eventDF = ...
+
+// Join two DataFrames 
+
+val joinDF = users
+    .join(events, users("id") == events("uid"))
+    .filter(events("date") > "2015-01-01")
+
+```
+![](images/14.png)
+
+### optimized phases 
+
+#### Phase 1 : Analysis 
+Te Spark SQL engine creates an abstract Syntax trr for the SQL DataFrame Query. In this phase, any column or table name will be resolved by consulting an internal `Catalog`, a programmatic interface to Spark SQL tha t holds a list of names of columns, data types, functions, tables, databases etc. Once they've all been resolved the query proceeds to the next phase. 
+
+#### Phase 2 : Logical optimization 
+The phase has two stages. Applying a standard rule based optimization approach, the Catalyst optimizer will first construct a set of multiple plans and then, using its cost-based optimizer (CBO) assign a cost to each plan. These plans are laid out as operator trees; they many include, for example, the process of constant folding, predicate push down, projection pruning, Boolean expression simplification etc. This logical plan is input into the physical plan. 
+
+#### Phase 3 : Physical Planning 
+In this Spark SQL generate the optimal physical plan for the selected logical plan, using physical operators that match those available in the Spark execution engine 
+
+#### Phase 4 : Code generation 
+The final stage generates efficient Java bytecodes to run on each machine. Because Spark SQL can operate on data sets loaded in memory, Spark can use state-of-the-art compiler technology for code generation to speed up the execution. It acts as a compiler, project Tungsten, which facilitates the whole-stage code generation, plays a role here. 
+
+Whole-stage code generation is a physical optimization phase that collapse the whole query into a single function, getting rid of virtual function calls and employing CPU registers for intermediate data. The second-generation Tungsten engine uses this approach to generate compact RDD code for final execution. This streamlined stratergy significantly improves CPU efficiency and performance. 
+
