@@ -423,3 +423,236 @@ spark.sql(
 
 ```
 ## Common DataFrame and SparkSQL Operations 
+We can perform various DataFrame operations on Spark SQL like 
+- Aggregate functions
+- Collection functions
+- Datetime functions 
+- Math functions 
+- Miscellaneous functions 
+- Non-aggregate functions 
+- Sorting functions 
+- String functions 
+- UDF functions 
+- Window functions 
+
+We will prepare the data for the DataFrame operation 
+
+1. Import two files and create two DataFrames, One for the airport and other for the flight delay 
+2. Using expr() to convert the delay and distance columns from `STRING` and `INT`
+3. Create a smaller table, foo, that we can focus on for our demo examples; it contains only information on three flights originating from Seattle(SEA) to destination San Francisco (SFO) for a small range. 
+   
+```
+// Import Scala 
+import org.apache.spark.sql.functions._ 
+
+// Set file paths 
+val delayPath = "delay_path"
+
+val airportPath = "airport_path"
+
+// Obtain airport data set 
+val airports = spark.read
+    .option("header", "true")
+    .option("inferSchema", "true")
+    .option("delimiter", "\t")
+    .csv(airportPath)
+airports.createOrReplaceTempView("airport_na")
+
+// Obtain the Departure delay information 
+val delays = spark.read
+    .option("header", "true")
+    .csv(delayPath)
+    .withColumn("delay", expr("CAST(delay as INT) as delay"))
+    .withColumn("distance", expr("CAST(distance as INT) as distance"))
+delays.createOrReplaceTempView("departureDelays")
+
+// Create temporary small tables 
+val foo = delays.filter(
+    expr("""origin == 'SEA' AND destination == 'SFO' AND 
+    date like '01010%' AND delay > 0""")
+)
+foo.createOrReplaceTempView("foo")
+
+# In Python
+# Set file Path 
+from pyspark.sql.functions import expr 
+from pyspark.sql.functions import expr
+tripdelaysFilePath =
+    "/databricks-datasets/learning-spark-v2/flights/departuredelays.csv"
+airportsnaFilePath =
+    "/databricks-datasets/learning-spark-v2/flights/airport-codes-na.txt"
+# Obtain airports data set
+airportsna = (spark.read
+    .format("csv")
+    .options(header="true", inferSchema="true", sep="\t")
+    .load(airportsnaFilePath))
+airportsna.createOrReplaceTempView("airports_na")
+# Obtain departure delays data set
+departureDelays = (spark.read
+    .format("csv")
+    .options(header="true")
+    .load(tripdelaysFilePath))
+departureDelays = (departureDelays
+    .withColumn("delay", expr("CAST(delay as INT) as delay"))
+    .withColumn("distance", expr("CAST(distance as INT) as distance")))
+departureDelays.createOrReplaceTempView("departureDelays")
+# Create temporary small table
+foo = (departureDelays
+    .filter(expr("""origin == 'SEA' and destination == 'SFO' and
+    date like '01010%' and delay > 0""")))
+foo.createOrReplaceTempView("foo")
+
+
+```
+
+### Union 
+A common pattern with Apache Spark is to union two different DataFrames with the same schema together. This can be achieved using the `union()` method
+
+```
+// Scala 
+// Union two tables 
+val bar = delay.union(foo)
+bar.createOrReplaceTempView("bar")
+bar.filter(expr("""origin == 'SEA' AND destination == 'SFO'
+AND date like '010101%' AND delay > 0""")).show()
+
+# In Python
+# Union two tables
+bar = departureDelays.union(foo)
+bar.createOrReplaceTempView("bar")
+# Show the union (filtering for SEA and SFO in a specific time range)
+bar.filter(expr("""origin == 'SEA' AND destination == 'SFO'
+AND date LIKE '01010%' AND delay > 0""")).show()
+
+-- In SQL 
+spark.sql("""
+SELECT * 
+    FROM bar
+WHERE origin = 'SEA'
+    AND destination = 'SFO'
+    AND data LIKE '01010%'
+    AND delay > 0
+""").show()
+```
+### Joins 
+A common DataFrame operation is to join two DataFrames together, the default Spark SQL join is *inner join* with the options being *inner, cross, outer, full, full_outer, right, right_outer, left, left_outer, left_semi, left_anti* 
+Example 
+```
+// In Scala foo.join(
+    airports.as('air'),
+    $"air.IATA" == $"origin"
+
+).select("City", "State", "date", "delay").show()
+
+# In Python
+# Join departure delays data (foo) with airport info 
+
+foo.join(
+    airports,
+    airports.IATA == foo.origin
+
+).select("City", "State", "date").show()
+
+-- In SQL 
+spark.sql("""
+SELECT a.City, a.State, f.date, f.delay
+FROM foo f
+JOIN airports_na as a 
+ON a.IATA = f.origin
+""").show()
+```
+### Windowing 
+A window function uses the values from the rows in a window(input range of rows) to set of values, typically in the form of another row. With window functions, it is possible to operate on a group of rows while still returning a single value of every input rows. 
+
+#### Window functions 
+![](images/31.png)
+Example 
+Getting value of TotalDelays operation from SEA, SFO and NYC and going to a Specific set of destinations
+
+```
+-- In SQL 
+DROP TABLE IF EXISTS departureDelayWindow; 
+
+CREATE TABLE departureDelayWindow AS 
+SELECT origin, destination, SUM(delay) AS TotalDelays 
+    FROM departureDelays 
+WHERE origin IN ('SEA', 'SFO', 'JFK')
+AND destination IN ('SEA', 'SFO', 'JFK', 'DEN',
+'ORD', 'LAX')
+GROUP BY origin, destination;
+
+-- In SQL
+spark.sql("""
+SELECT origin, destination, TotalDelays, rank
+FROM (
+SELECT origin, destination, TotalDelays, dense_rank()
+OVER (PARTITION BY origin ORDER BY TotalDelays DESC) as rank
+FROM departureDelaysWindow
+) t
+WHERE rank <= 3
+""").show()
+
+```
+#### Modification 
+
+While DataFrame themselves are immutable, we can modify them through operation that create new, different DataFrame, with different columns (RDD can't be change to ensure the data lineage )
+
+#### Adding new column in DataFrame
+
+```
+// In Scala
+import org.apache.spark.sql.functions.expr
+val foo2 = foo.withColumn(
+"status",
+expr("CASE WHEN delay <= 10 THEN 'On-time' ELSE 'Delayed' END")
+)
+# In Python
+from pyspark.sql.functions import expr
+foo2 = (foo.withColumn(
+"status",
+expr("CASE WHEN delay <= 10 THEN 'On-time' ELSE 'Delayed' END")
+))
+```
+#### Dropping Column 
+```
+// In scala 
+val foo3 = foo2.drop("delay")
+
+# In Python 
+val foo3 = foo2.drop("delay")
+
+```
+#### Rename 
+```
+// In Scala 
+val foo4 = foo3.withColumnRename("status", "flight_status")
+foo4.show()
+
+# In Python
+foo4 = foo3.withColumnRename("status", "flight_status")
+
+```
+#### Pivoting 
+```
+-- In SQL 
+SELECT destination CAST(SUBSTRING(data, 0 , 2) AS int) AS month, delay 
+FROM departureDelays
+WHERE origins = 'SEA'
+```
+Pivoting allows you to place names in the month column (instead of 1 and 2 you can
+show Jan and Feb , respectively) as well as perform aggregate calculations (in this case
+average and max) on the delays by destination and month:
+```
+-- In SQL
+SELECT * FROM (
+SELECT destination, CAST(SUBSTRING(date, 0, 2) AS int) AS month, delay
+FROM departureDelays WHERE origin = 'SEA'
+)
+PIVOT (
+CAST(AVG(delay) AS DECIMAL(4, 2)) AS AvgDelay, MAX(delay) AS MaxDelay
+FOR month IN (1 JAN, 2 FEB)
+)
+ORDER BY destination
+
+
+```
