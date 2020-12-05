@@ -119,4 +119,6 @@ Here we have specified "console" as the output as the streaming sink and "comple
     - Continuous 
       - This is an experimental model, where the streaming query will process data continuously instead on micro-batches. Only a small DataFrame operation will be allowed in this mode but it can provide much lower latency thant the micro batch trigger modes. 
   - Checkpoint locations 
-    - This is a directory in any HDFS compatible filesystem where the streaming query saves its progress information - that is, ehat data has been successfully processed. Upon failure, this metadata is used to restart the failed query exactly where it left off. Therefore, setting this option is necessary for failure recovery with exactly-once guarantees. 
+    - This is a directory in any HDFS compatible filesystem where the streaming query saves its progress information - that is, what data has been successfully processed. Upon failure, this metadata is used to restart the failed query exactly where it left off. Therefore, setting this option is necessary for failure recovery with exactly-once guarantees. 
+- **Step 5 : Start the Query** : We can do following to start the query 
+  - ``` streamingQuery = writer2.start()``` *start()* isa non-blocking method it will return as soon as the query has started in background we can use `streamingQuery.awaitTermination()` to block the main thread until the query terminates. We 
